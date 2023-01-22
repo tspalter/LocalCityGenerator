@@ -267,15 +267,20 @@ var Buildings = /** @class */ (function () {
                         this._models = new BuildingModels([]);
                         g = new graph_1.default(this.allStreamlines, this.dstep, true);
                         this.polygonFinder = new polygon_finder_1.default(g.nodes, this.buildingParams, this.tensorField);
-                        this.polygonFinder.findPolygons();
-                        return [4 /*yield*/, this.polygonFinder.shrink(animate)];
+                        console.log('  polygons length after initialization - ' + this.polygonFinder.polygons.length);
+                        return [4 /*yield*/, this.polygonFinder.findPolygons()];
                     case 1:
                         _a.sent();
-                        return [4 /*yield*/, this.polygonFinder.divide(animate)];
+                        console.log('  polygons length after findPolygons - ' + this.polygonFinder.polygons.length);
+                        return [4 /*yield*/, this.polygonFinder.shrink(animate)];
                     case 2:
                         _a.sent();
+                        console.log('  polygons length after shrink - ' + this.polygonFinder.polygons.length);
+                        return [4 /*yield*/, this.polygonFinder.divide(animate)];
+                    case 3:
+                        _a.sent();
                         this.redraw();
-                        console.log('  polygons length - ' + this.polygonFinder.polygons.length);
+                        console.log('  polygons length after divide - ' + this.polygonFinder.polygons.length);
                         this._models = new BuildingModels(this.polygonFinder.polygons);
                         this.postGenerateCallback();
                         return [2 /*return*/];

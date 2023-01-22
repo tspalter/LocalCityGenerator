@@ -201,11 +201,14 @@ export default class Buildings {
         const g = new Graph(this.allStreamlines, this.dstep, true);
 
         this.polygonFinder = new PolygonFinder(g.nodes, this.buildingParams, this.tensorField);
-        this.polygonFinder.findPolygons();
+        console.log('  polygons length after initialization - ' + this.polygonFinder.polygons.length);
+        await this.polygonFinder.findPolygons();
+        console.log('  polygons length after findPolygons - ' + this.polygonFinder.polygons.length);
         await this.polygonFinder.shrink(animate);
+        console.log('  polygons length after shrink - ' + this.polygonFinder.polygons.length);
         await this.polygonFinder.divide(animate);
         this.redraw();
-        console.log('  polygons length - ' + this.polygonFinder.polygons.length);
+        console.log('  polygons length after divide - ' + this.polygonFinder.polygons.length);
         this._models = new BuildingModels(this.polygonFinder.polygons);
 
         this.postGenerateCallback();

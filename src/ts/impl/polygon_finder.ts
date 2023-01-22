@@ -171,6 +171,8 @@ export default class PolygonFinder {
             }
         }
 
+        console.log('polygons size - ' + polygons.length);
+
         this._polygons = this.filterPolygonsByWater(polygons);
     }
 

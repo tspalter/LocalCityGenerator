@@ -279,6 +279,7 @@ var PolygonFinder = /** @class */ (function () {
             }
             finally { if (e_3) throw e_3.error; }
         }
+        console.log('polygons size - ' + polygons.length);
         this._polygons = this.filterPolygonsByWater(polygons);
     };
     PolygonFinder.prototype.filterPolygonsByWater = function (polygons) {
