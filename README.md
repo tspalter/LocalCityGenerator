@@ -1,3 +1,4 @@
+THIS IS A CLONED PROJECT!!  If you would like to see the original, please go to https://github.com/ProbableTrain/MapGenerator!  Big thanks to ProbableTrain for letting me do this!
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
