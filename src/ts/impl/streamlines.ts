@@ -233,17 +233,27 @@ export default class StreamlineGenerator {
      * All at once - will freeze if dsep small
      */
     async createAllStreamlines(animate=false): Promise<void> {
-        return new Promise<void>(resolve => {
-            this.resolve = resolve
-            this.streamlinesDone = false;
-
-            if (!animate) {
-                let major = true;
-                while (this.createStreamline(major)) {
-                    major = !major;
-                }
+        console.log('begin of createAllStreamlines');
+        this.streamlinesDone = false;
+        if (!animate) {
+            let major = true;
+            while (this.createStreamline(major)) {
+                console.log('  createStreamline returned true');
+                major = !major;
             }
-        }).then(() => this.joinDanglingStreamlines());
+        }
+        this.joinDanglingStreamlines();
+    // return new Promise<void>(resolve => {
+    //         this.resolve = resolve
+    //         this.streamlinesDone = false;
+
+    //         if (!animate) {
+    //             let major = true;
+    //             while (this.createStreamline(major)) {
+    //                 major = !major;
+    //             }
+    //         }
+    //     }).then(() => this.joinDanglingStreamlines());
     }
 
     protected simplifyStreamline(streamline: Vector[]): Vector[] {

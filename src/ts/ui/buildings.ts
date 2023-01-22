@@ -1,5 +1,5 @@
 import * as log from 'loglevel';
-import DomainController from './domain_controller';
+// import DomainController from './domain_controller';
 import TensorField from '../impl/tensor_field';
 import Graph from '../impl/graph';
 import Vector from '../vector';
@@ -19,7 +19,11 @@ export interface BuildingModel {
  * Pseudo 3D buildings
  */
 class BuildingModels {
-    private domainController = DomainController.getInstance();
+    // private domainController = DomainController.getInstance();
+    protected origin = Vector.zeroVector();
+    protected worldDimensions = new Vector(1440, 1080);
+    protected zoom = 1;
+    protected orthographic = false;
     private _buildingModels: BuildingModel[] = [];
 
     constructor(lots: Vector[][]) {  // Lots in world space
@@ -43,10 +47,10 @@ class BuildingModels {
      * Recalculated when the camera moves
      */
     setBuildingProjections(): void {
-        const d = 1000 / this.domainController.zoom;
-        const cameraPos = this.domainController.getCameraPosition();
+        const d = 1000 / this.zoom;
+        const cameraPos = this.getCameraPosition();
         for (const b of this._buildingModels) {
-            b.lotScreen = b.lotWorld.map(v => this.domainController.worldToScreen(v.clone()));
+            b.lotScreen = b.lotWorld.map(v => this.worldToScreen(v.clone()));
             b.roof = b.lotScreen.map(v => this.heightVectorToScreen(v, b.height, d, cameraPos));
             b.sides = this.getBuildingSides(b);
         }
@@ -54,9 +58,9 @@ class BuildingModels {
 
     private heightVectorToScreen(v: Vector, h: number, d: number, camera: Vector): Vector {
         const scale = (d / (d - h)); // 0.1
-        if (this.domainController.orthographic) {
-            const diff = this.domainController.cameraDirection.multiplyScalar(-h * scale);
-            return v.clone().add(diff);
+        if (this.orthographic) {
+            // const diff = this.domainController.cameraDirection.multiplyScalar(-h * scale);
+            return v.clone().add(Vector.zeroVector());
         } else {
             return v.clone().sub(camera).multiplyScalar(scale).add(camera);
         }
@@ -73,6 +77,43 @@ class BuildingModels {
         }
         return polygons;
     }
+
+        /**
+     * Edits vector
+     */
+        zoomToWorld(v: Vector): Vector {
+            return v.divideScalar(this.zoom);
+        }
+    
+        /**
+         * Edits vector
+         */
+        zoomToScreen(v: Vector): Vector {
+            return v.multiplyScalar(this.zoom);
+        }
+    
+        /**
+         * Edits vector
+         */
+        screenToWorld(v: Vector): Vector {
+            return this.zoomToWorld(v).add(this.origin);
+        }
+    
+        /**
+         * Edits vector
+         */
+        worldToScreen(v: Vector): Vector {
+            return this.zoomToScreen(v.sub(this.origin));
+        }
+
+        getCameraPosition(): Vector {
+            const centre = new Vector(this.worldDimensions.x / 2, this.worldDimensions.y / 2);
+            if (this.orthographic) {
+                return centre.add(centre.clone().multiply(Vector.zeroVector()).multiplyScalar(100));
+            }
+            return centre.add(centre.clone().multiply(Vector.zeroVector()));
+            // this.screenDimensions.divideScalar(2);
+        }
 }
 
 /**
@@ -81,7 +122,10 @@ class BuildingModels {
 export default class Buildings {
     private polygonFinder: PolygonFinder;
     private allStreamlines: Vector[][] = [];
-    private domainController = DomainController.getInstance();
+    // private domainController = DomainController.getInstance();
+    protected origin = Vector.zeroVector();
+    protected worldDimensions = new Vector(1440, 1080);
+    protected zoom = 1;
     private preGenerateCallback: () => any = () => {};
     private postGenerateCallback: () => any = () => {};
     private _models: BuildingModels = new BuildingModels([]);
@@ -95,14 +139,14 @@ export default class Buildings {
     };
 
     constructor(private tensorField: TensorField,
-                folder: dat.GUI,
+                /*folder: dat.GUI,*/
                 private redraw: () => void,
                 private dstep: number,
                 private _animate: boolean) {
-        folder.add({'AddBuildings': () => this.generate(this._animate)}, 'AddBuildings');
-        folder.add(this.buildingParams, 'minArea');
-        folder.add(this.buildingParams, 'shrinkSpacing');
-        folder.add(this.buildingParams, 'chanceNoDivide');
+        // folder.add({'AddBuildings': () => this.generate(this._animate)}, 'AddBuildings');
+        // folder.add(this.buildingParams, 'minArea');
+        // folder.add(this.buildingParams, 'shrinkSpacing');
+        // folder.add(this.buildingParams, 'chanceNoDivide');
         this.polygonFinder = new PolygonFinder([], this.buildingParams, this.tensorField);
     }
 
@@ -111,7 +155,7 @@ export default class Buildings {
     }
 
     get lots(): Vector[][] {
-        return this.polygonFinder.polygons.map(p => p.map(v => this.domainController.worldToScreen(v.clone())));
+        return this.polygonFinder.polygons.map(p => p.map(v => this.worldToScreen(v.clone())));
     }
 
     /**
@@ -123,7 +167,7 @@ export default class Buildings {
         blockParams.shrinkSpacing = blockParams.shrinkSpacing/2;
         const polygonFinder = new PolygonFinder(g.nodes, blockParams, this.tensorField);
         polygonFinder.findPolygons();
-        return polygonFinder.shrink(false).then(() => polygonFinder.polygons.map(p => p.map(v => this.domainController.worldToScreen(v.clone()))));
+        return polygonFinder.shrink(false).then(() => polygonFinder.polygons.map(p => p.map(v => this.worldToScreen(v.clone()))));
     }
 
     get models(): BuildingModel[] {
@@ -148,7 +192,11 @@ export default class Buildings {
      * Finds blocks, shrinks and divides them to create building lots
      */
     async generate(animate: boolean): Promise<void> {
+        console.log('begin of buildings.generate');
+        console.log('  calling preGenerateCallback');
+        console.log('  allStreamlines.length - ' + this.allStreamlines.length);
         this.preGenerateCallback();
+        console.log('  allStreamlines.length - ' + this.allStreamlines.length);
         this._models = new BuildingModels([]);
         const g = new Graph(this.allStreamlines, this.dstep, true);
 
@@ -157,6 +205,7 @@ export default class Buildings {
         await this.polygonFinder.shrink(animate);
         await this.polygonFinder.divide(animate);
         this.redraw();
+        console.log('  polygons length - ' + this.polygonFinder.polygons.length);
         this._models = new BuildingModels(this.polygonFinder.polygons);
 
         this.postGenerateCallback();
@@ -169,4 +218,32 @@ export default class Buildings {
     setPostGenerateCallback(callback: () => any): void {
         this.postGenerateCallback = callback;
     }
+
+    /**
+     * Edits vector
+     */
+        zoomToWorld(v: Vector): Vector {
+            return v.divideScalar(this.zoom);
+        }
+    
+        /**
+         * Edits vector
+         */
+        zoomToScreen(v: Vector): Vector {
+            return v.multiplyScalar(this.zoom);
+        }
+    
+        /**
+         * Edits vector
+         */
+        screenToWorld(v: Vector): Vector {
+            return this.zoomToWorld(v).add(this.origin);
+        }
+    
+        /**
+         * Edits vector
+         */
+        worldToScreen(v: Vector): Vector {
+            return this.zoomToScreen(v.sub(this.origin));
+        }
 }

@@ -13,8 +13,8 @@ export abstract class BasisField {
     abstract readonly FOLDER_NAME: string;
     abstract readonly FIELD_TYPE: number;
     protected static folderNameIndex: number = 0;
-    protected parentFolder: dat.GUI;
-    protected folder: dat.GUI;
+    // protected parentFolder: dat.GUI;
+    // protected folder: dat.GUI;
     protected _centre: Vector;
 
     constructor(centre: Vector, protected _size: number, protected _decay: number) {
@@ -53,30 +53,30 @@ export abstract class BasisField {
     }
 
     setFolder(): void {
-        if (this.parentFolder.__folders) {
-            for (const folderName in this.parentFolder.__folders) {
-                this.parentFolder.__folders[folderName].close();
-            }
-            this.folder.open();
-        }
+        // if (this.parentFolder.__folders) {
+        //     for (const folderName in this.parentFolder.__folders) {
+        //         this.parentFolder.__folders[folderName].close();
+        //     }
+        //     this.folder.open();
+        // }
     }
 
     removeFolderFromParent(): void {
-        if (this.parentFolder.__folders && Object.values(this.parentFolder.__folders).indexOf(this.folder) >= 0) {
-            this.parentFolder.removeFolder(this.folder);
-        }
+        // if (this.parentFolder.__folders && Object.values(this.parentFolder.__folders).indexOf(this.folder) >= 0) {
+        //     this.parentFolder.removeFolder(this.folder);
+        // }
     }
 
     /**
      * Creates a folder and adds it to the GUI to control params
      */
-    setGui(parent: dat.GUI, folder: dat.GUI): void {
-        this.parentFolder = parent;
-        this.folder = folder;
-        folder.add(this._centre, 'x');
-        folder.add(this._centre, 'y');
-        folder.add(this, '_size');
-        folder.add(this, '_decay', -50, 50);
+    setGui(/*parent: dat.GUI, folder: dat.GUI*/): void {
+        // this.parentFolder = parent;
+        // this.folder = folder;
+        // folder.add(this._centre, 'x');
+        // folder.add(this._centre, 'y');
+        // folder.add(this, '_size');
+        // folder.add(this, '_decay', -50, 50);
     }
 
     /**
@@ -107,13 +107,13 @@ export class Grid extends BasisField {
         this._theta = theta;
     }
 
-    setGui(parent: dat.GUI, folder: dat.GUI): void {
-        super.setGui(parent, folder);
+    setGui(/*parent: dat.GUI, folder: dat.GUI*/): void {
+        super.setGui(/*parent, folder*/);
 
         // GUI in degrees, convert to rads
-        const thetaProp = {theta: this._theta * 180 / Math.PI};
-        const thetaController = folder.add(thetaProp, 'theta', -90, 90);
-        thetaController.onChange(theta => this._theta = theta * (Math.PI / 180));
+        // const thetaProp = {theta: this._theta * 180 / Math.PI};
+        // const thetaController = folder.add(thetaProp, 'theta', -90, 90);
+        // thetaController.onChange(theta => this._theta = theta * (Math.PI / 180));
     }
 
     getTensor(point: Vector): Tensor {

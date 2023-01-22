@@ -1,6 +1,6 @@
 import * as log from 'loglevel';
 import {DefaultCanvasWrapper} from './canvas_wrapper';
-import DomainController from './domain_controller';
+// import DomainController from './domain_controller';
 import DragController from './drag_controller';
 import TensorField from '../impl/tensor_field';
 import {NoiseParams} from '../impl/tensor_field';
@@ -14,9 +14,13 @@ import Vector from '../vector';
 export default class TensorFieldGUI extends TensorField {
     private TENSOR_LINE_DIAMETER = 20;
     private TENSOR_SPAWN_SCALE = 0.7;  // How much to shrink worldDimensions to find spawn point
-    private domainController = DomainController.getInstance();
+    // private domainController = DomainController.getInstance();
+    // vars used by domainController that aren't necessary for my app
+    private worldDimensions = new Vector(1440, 1080);
+    private origin = new Vector(0, 0);
+    private zoom = 1;
 
-    constructor(private guiFolder: dat.GUI, private dragController: DragController,
+    constructor(/*private guiFolder: dat.GUI, private dragController: DragController,*/
         public drawCentre: boolean, noiseParams: NoiseParams) {
         super(noiseParams);
         // For custom naming of gui buttons
@@ -27,11 +31,11 @@ export default class TensorFieldGUI extends TensorField {
             addGrid: (): void => this.addGridRandom(),
         };
 
-        this.guiFolder.add(tensorFieldGuiObj, 'reset');
-        this.guiFolder.add(this, 'smooth');
-        this.guiFolder.add(tensorFieldGuiObj, 'setRecommended');
-        this.guiFolder.add(tensorFieldGuiObj, 'addRadial');
-        this.guiFolder.add(tensorFieldGuiObj, 'addGrid');
+        // this.guiFolder.add(tensorFieldGuiObj, 'reset');
+        // this.guiFolder.add(this, 'smooth');
+        // this.guiFolder.add(tensorFieldGuiObj, 'setRecommended');
+        // this.guiFolder.add(tensorFieldGuiObj, 'addRadial');
+        // this.guiFolder.add(tensorFieldGuiObj, 'addGrid');
     }
 
     /**
@@ -39,10 +43,8 @@ export default class TensorFieldGUI extends TensorField {
      */
     setRecommended(): void {
         this.reset();
-        const size = this.domainController.worldDimensions.multiplyScalar(this.TENSOR_SPAWN_SCALE);
-        const newOrigin = this.domainController.worldDimensions
-            .multiplyScalar((1 - this.TENSOR_SPAWN_SCALE) / 2)
-            .add(this.domainController.origin);
+        const size = new Vector(611.8, 522.2);
+        const newOrigin = new Vector(131.1, 111.9);
         this.addGridAtLocation(newOrigin);
         this.addGridAtLocation(newOrigin.clone().add(size));
         this.addGridAtLocation(newOrigin.clone().add(new Vector(size.x, 0)));
@@ -51,7 +53,7 @@ export default class TensorFieldGUI extends TensorField {
     }
 
     addRadialRandom(): void {
-        const width = this.domainController.worldDimensions.x;
+        const width = this.worldDimensions.x;
         this.addRadial(this.randomLocation(),
             Util.randomRange(width / 10, width / 5),  // Size
             Util.randomRange(50));  // Decay
@@ -62,7 +64,7 @@ export default class TensorFieldGUI extends TensorField {
     }
 
     private addGridAtLocation(location: Vector): void {
-        const width = this.domainController.worldDimensions.x;
+        const width = this.worldDimensions.x;
         this.addGrid(location,
             Util.randomRange(width / 4, width),  // Size
             Util.randomRange(50),  // Decay
@@ -74,20 +76,20 @@ export default class TensorFieldGUI extends TensorField {
      * Sampled from middle of screen (shrunk rectangle)
      */
     private randomLocation(): Vector {
-        const size = this.domainController.worldDimensions.multiplyScalar(this.TENSOR_SPAWN_SCALE);
+        const size = this.worldDimensions.multiplyScalar(this.TENSOR_SPAWN_SCALE);
         const location = new Vector(Math.random(), Math.random()).multiply(size);
-        const newOrigin = this.domainController.worldDimensions.multiplyScalar((1 - this.TENSOR_SPAWN_SCALE) / 2);
-        return location.add(this.domainController.origin).add(newOrigin);
+        const newOrigin = this.worldDimensions.multiplyScalar((1 - this.TENSOR_SPAWN_SCALE) / 2);
+        return location.add(this.origin).add(newOrigin);
     }
 
     private getCrossLocations(): Vector[] {
         // Gets grid of points for vector field vis in world space
-        const diameter = this.TENSOR_LINE_DIAMETER / this.domainController.zoom;
-        const worldDimensions = this.domainController.worldDimensions;
+        const diameter = this.TENSOR_LINE_DIAMETER / this.zoom;
+        const worldDimensions = this.worldDimensions;
         const nHor = Math.ceil(worldDimensions.x / diameter) + 1; // Prevent pop-in
         const nVer = Math.ceil(worldDimensions.y / diameter) + 1;
-        const originX = diameter * Math.floor(this.domainController.origin.x / diameter);
-        const originY = diameter * Math.floor(this.domainController.origin.y / diameter);
+        const originX = diameter * Math.floor(this.origin.x / diameter);
+        const originY = diameter * Math.floor(this.origin.y / diameter);
 
         const out = [];
         for (let x = 0; x <= nHor; x++) {
@@ -100,7 +102,7 @@ export default class TensorFieldGUI extends TensorField {
     }
 
     private getTensorLine(point: Vector, tensorV: Vector): Vector[] {
-        const transformedPoint = this.domainController.worldToScreen(point.clone());
+        const transformedPoint = this.worldToScreen(point.clone());
 
         const diff = tensorV.multiplyScalar(this.TENSOR_LINE_DIAMETER / 2);  // Assumes normalised
         const start = transformedPoint.clone().sub(diff);
@@ -127,43 +129,72 @@ export default class TensorFieldGUI extends TensorField {
             canvas.setFillStyle('red');
             this.getBasisFields().forEach(field => 
                 field.FIELD_TYPE === FIELD_TYPE.Grid ?
-                canvas.drawSquare(this.domainController.worldToScreen(field.centre), 7) :
-                canvas.drawCircle(this.domainController.worldToScreen(field.centre), 7))
+                canvas.drawSquare(this.worldToScreen(field.centre), 7) :
+                canvas.drawCircle(this.worldToScreen(field.centre), 7))
         }
     }
 
     protected addField(field: BasisField): void {
         super.addField(field);
-        const folder = this.guiFolder.addFolder(`${field.FOLDER_NAME}`);
+        // const folder = this.guiFolder.addFolder(`${field.FOLDER_NAME}`);
         
         // Function to deregister from drag controller
-        const deregisterDrag = this.dragController.register(
-            () => field.centre,
-            field.dragMoveListener.bind(field),
-            field.dragStartListener.bind(field)
-        );
-        const removeFieldObj = {remove: () => this.removeFieldGUI(field, deregisterDrag)};
+        // const deregisterDrag = this.dragController.register(
+        //     () => field.centre,
+        //     field.dragMoveListener.bind(field),
+        //     field.dragStartListener.bind(field)
+        // );
+        // const removeFieldObj = {remove: () => this.removeFieldGUI(field, deregisterDrag)};
         
         // Give dat gui removeField button
-        folder.add(removeFieldObj, 'remove');
-        field.setGui(this.guiFolder, folder);
+        // folder.add(removeFieldObj, 'remove');
+        // field.setGui();
     }
 
-    private removeFieldGUI(field: BasisField, deregisterDrag: (() => void)): void {
-        super.removeField(field);
-        field.removeFolderFromParent();
-        // Deregister from drag controller
-        deregisterDrag();
-    }
+    // private removeFieldGUI(field: BasisField, deregisterDrag: (() => void)): void {
+    //     super.removeField(field);
+    //     field.removeFolderFromParent();
+    //     // Deregister from drag controller
+    //     deregisterDrag();
+    // }
 
     reset(): void {
         // TODO kind of hacky - calling remove callbacks from gui object, should store callbacks
         // in addfield and call them (requires making sure they're idempotent)
-        for (const fieldFolderName in this.guiFolder.__folders) {
-            const fieldFolder = this.guiFolder.__folders[fieldFolderName];
-            (fieldFolder.__controllers[0] as any).initialValue();
-        }
+        // for (const fieldFolderName in this.guiFolder.__folders) {
+        //     const fieldFolder = this.guiFolder.__folders[fieldFolderName];
+        //     (fieldFolder.__controllers[0] as any).initialValue();
+        // }
 
         super.reset();
+    }
+    
+    // functions from DomainController
+    /**
+     * Edits vector
+     */
+    zoomToWorld(v: Vector): Vector {
+        return v.divideScalar(this.zoom);
+    }
+
+    /**
+     * Edits vector
+     */
+    zoomToScreen(v: Vector): Vector {
+        return v.multiplyScalar(this.zoom);
+    }
+
+    /**
+     * Edits vector
+     */
+    screenToWorld(v: Vector): Vector {
+        return this.zoomToWorld(v).add(this.origin);
+    }
+
+    /**
+     * Edits vector
+     */
+    worldToScreen(v: Vector): Vector {
+        return this.zoomToScreen(v.sub(this.origin));
     }
 }

@@ -16,7 +16,7 @@ export default class DomainController {
     private _origin: Vector = Vector.zeroVector();
     
     // Screen-space width and height
-    private _screenDimensions = Vector.zeroVector();
+    private _screenDimensions = new Vector(1440, 1080);
 
     // Ratio of screen pixels to world pixels
     private _zoom: number = 1;
@@ -61,9 +61,9 @@ export default class DomainController {
     }
 
     private setScreenDimensions(): void {
-        this.moved = true;
-        this._screenDimensions.setX(window.innerWidth);
-        this._screenDimensions.setY(window.innerHeight);
+        // this.moved = true;
+        // this._screenDimensions.setX(window.innerWidth);
+        // this._screenDimensions.setY(window.innerHeight);
     }
 
     public static getInstance(): DomainController {

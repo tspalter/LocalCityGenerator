@@ -1,5 +1,5 @@
 import * as log from 'loglevel';
-import * as dat from 'dat.gui';
+// import * as dat from 'dat.gui';
 import TensorFieldGUI from './tensor_field_gui';
 import {NoiseParams} from '../impl/tensor_field';
 import CanvasWrapper from './canvas_wrapper';

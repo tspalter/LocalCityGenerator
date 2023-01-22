@@ -25,7 +25,7 @@ export default class DragController {
     private disabled: boolean = false;
     private domainController = DomainController.getInstance();
 
-    constructor(private gui: dat.GUI) {
+    constructor(/*private gui: dat.GUI*/) {
         interact(`#${Util.CANVAS_ID}`).draggable({
             onstart: this.dragStart.bind(this),
             onmove: this.dragMove.bind(this),
@@ -89,7 +89,7 @@ export default class DragController {
         this._isDragging = false;
         this.domainController.pan(Vector.zeroVector());  // Triggers canvas update
         this.currentlyDragging = null;
-        Util.updateGui(this.gui);
+        // Util.updateGui(this.gui);
     }
 
     get isDragging(): boolean {

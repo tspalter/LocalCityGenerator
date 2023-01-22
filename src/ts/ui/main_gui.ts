@@ -1,5 +1,5 @@
 import * as log from 'loglevel';
-import DomainController from './domain_controller';
+// import DomainController from './domain_controller';
 import TensorField from '../impl/tensor_field';
 import {RK4Integrator} from '../impl/integrator';
 import FieldIntegrator from '../impl/integrator';
@@ -18,6 +18,8 @@ import {DefaultStyle, RoughStyle} from './style';
 import CanvasWrapper from './canvas_wrapper';
 import Buildings, {BuildingModel} from './buildings';
 import PolygonUtil from '../impl/polygon_util';
+import ModelGenerator from '../model_generator';
+import Util from '../util';
 
 /**
  * Handles Map folder, glues together impl
@@ -27,7 +29,11 @@ export default class MainGUI {
     private numSmallParks: number = 0;
     private clusterBigParks: boolean = false;
 
-    private domainController = DomainController.getInstance();
+    // private domainController = DomainController.getInstance();
+    private moved = false;
+    private zoom = 1;
+    private origin = Vector.zeroVector();
+    private screenDimensions = new Vector(1440, 1080);
     private intersections: Vector[] = [];
     private bigParks: Vector[][] = [];
     private smallParks: Vector[][] = [];
@@ -59,11 +65,11 @@ export default class MainGUI {
 
     private redraw: boolean = true;
 
-    constructor(private guiFolder: dat.GUI, private tensorField: TensorField, private closeTensorFolder: () => void) {
-        guiFolder.add(this, 'generateEverything');
+    constructor(/*private guiFolder: dat.GUI, */private tensorField: TensorField/*, private closeTensorFolder: () => void*/) {
+        // guiFolder.add(this, 'generateEverything');
         // guiFolder.add(this, 'simpleBenchMark');
-        const animateController = guiFolder.add(this, 'animate');
-        guiFolder.add(this, 'animationSpeed');
+        // const animateController = guiFolder.add(this, 'animate');
+        // guiFolder.add(this, 'animationSpeed');
 
         this.coastlineParams = Object.assign({
             coastNoise: {
@@ -98,24 +104,25 @@ export default class MainGUI {
         const redraw = () => this.redraw = true;
 
         this.coastline = new WaterGUI(tensorField, this.coastlineParams, integrator,
-            this.guiFolder, closeTensorFolder, 'Water', redraw).initFolder();
-        this.mainRoads = new RoadGUI(this.mainParams, integrator, this.guiFolder, closeTensorFolder, 'Main', redraw).initFolder();
-        this.majorRoads = new RoadGUI(this.majorParams, integrator, this.guiFolder, closeTensorFolder, 'Major', redraw, this.animate).initFolder();
-        this.minorRoads = new RoadGUI(this.minorParams, integrator, this.guiFolder, closeTensorFolder, 'Minor', redraw, this.animate).initFolder();
+            'Water', redraw);
+        this.mainRoads = new RoadGUI(this.mainParams, integrator, 'Main', redraw);
+        this.majorRoads = new RoadGUI(this.majorParams, integrator, 'Major', redraw, this.animate);
+        this.minorRoads = new RoadGUI(this.minorParams, integrator, 'Minor', redraw, this.animate);
         
-        const parks = guiFolder.addFolder('Parks');
-        parks.add({Generate: () => {
-            this.buildings.reset();
-            this.addParks();
-            this.redraw = true;
-        }}, 'Generate');
-        parks.add(this, 'clusterBigParks');
-        parks.add(this, 'numBigParks');
-        parks.add(this, 'numSmallParks');
+        // const parks = guiFolder.addFolder('Parks');
+        // parks.add({Generate: () => {
+        //     this.buildings.reset();
+        //     this.addParks();
+        //     this.redraw = true;
+        // }}, 'Generate');
+        // parks.add(this, 'clusterBigParks');
+        // parks.add(this, 'numBigParks');
+        // parks.add(this, 'numSmallParks');
 
-        const buildingsFolder = guiFolder.addFolder('Buildings');
-        this.buildings = new Buildings(tensorField, buildingsFolder, redraw, this.minorParams.dstep, this.animate);
+        // const buildingsFolder = guiFolder.addFolder('Buildings');
+        this.buildings = new Buildings(tensorField, redraw, this.minorParams.dstep, this.animate);
         this.buildings.setPreGenerateCallback(() => {
+            console.log('I got here');
             const allStreamlines = [];
             allStreamlines.push(...this.mainRoads.allStreamlines);
             allStreamlines.push(...this.majorRoads.allStreamlines);
@@ -124,11 +131,11 @@ export default class MainGUI {
             this.buildings.setAllStreamlines(allStreamlines);
         });
 
-        animateController.onChange((b: boolean) => {
-            this.majorRoads.animate = b;
-            this.minorRoads.animate = b;
-            this.buildings.animate = b;
-        });
+        // animateController.onChange((b: boolean) => {
+        //     this.majorRoads.animate = b;
+        //     this.minorRoads.animate = b;
+        //     this.buildings.animate = b;
+        // });
 
         this.minorRoads.setExistingStreamlines([this.coastline, this.mainRoads, this.majorRoads]);
         this.majorRoads.setExistingStreamlines([this.coastline, this.mainRoads]);
@@ -236,11 +243,17 @@ export default class MainGUI {
     }
 
     async generateEverything() {
-        this.coastline.generateRoads();
+        console.log('generateEverything');
+        console.log('generating coastline');
+        await this.coastline.generateRoads();
+        console.log('generating mainRoads');
         await this.mainRoads.generateRoads();
+        console.log('generating majorRoads');
         await this.majorRoads.generateRoads(this.animate);
+        console.log('generating minorRoads');
         await this.minorRoads.generateRoads(this.animate);
         this.redraw = true;
+        console.log('generating buildings');
         await this.buildings.generate(this.animate);
     }
 
@@ -259,12 +272,12 @@ export default class MainGUI {
     }
 
     draw(style: Style, forceDraw=false, customCanvas?: CanvasWrapper): void {
-        if (!style.needsUpdate && !forceDraw && !this.redraw && !this.domainController.moved) {
+        if (!style.needsUpdate && !forceDraw && !this.redraw && !this.moved) {
             return;
         }
 
         style.needsUpdate = false;
-        this.domainController.moved = false;
+        this.moved = false;
         this.redraw = false;
 
         style.seaPolygon = this.coastline.seaPolygon;
@@ -277,8 +290,8 @@ export default class MainGUI {
         }
 
         style.parks = [];
-        style.parks.push(...this.bigParks.map(p => p.map(v => this.domainController.worldToScreen(v.clone()))));
-        style.parks.push(...this.smallParks.map(p => p.map(v => this.domainController.worldToScreen(v.clone()))));
+        style.parks.push(...this.bigParks.map(p => p.map(v => this.worldToScreen(v.clone()))));
+        style.parks.push(...this.smallParks.map(p => p.map(v => this.worldToScreen(v.clone()))));
         style.minorRoads = this.minorRoads.roads;
         style.majorRoads = this.majorRoads.roads;
         style.mainRoads = this.mainRoads.roads;
@@ -313,18 +326,81 @@ export default class MainGUI {
     }
 
     public get minorRoadPolygons(): Vector[][] {
-        return this.minorRoads.roads.map(r => PolygonUtil.resizeGeometry(r, 1 * this.domainController.zoom, false));
+        return this.minorRoads.roads.map(r => PolygonUtil.resizeGeometry(r, 1 * this.zoom, false));
     }
 
     public get majorRoadPolygons(): Vector[][] {
-        return this.majorRoads.roads.concat([this.coastline.secondaryRiver]).map(r => PolygonUtil.resizeGeometry(r, 2 * this.domainController.zoom, false));
+        return this.majorRoads.roads.concat([this.coastline.secondaryRiver]).map(r => PolygonUtil.resizeGeometry(r, 2 * this.zoom, false));
     }
 
     public get mainRoadPolygons(): Vector[][] {
-        return this.mainRoads.roads.concat(this.coastline.roads).map(r => PolygonUtil.resizeGeometry(r, 2.5 * this.domainController.zoom, false));
+        return this.mainRoads.roads.concat(this.coastline.roads).map(r => PolygonUtil.resizeGeometry(r, 2.5 * this.zoom, false));
     }
 
     public get coastlinePolygon(): Vector[] {
-        return PolygonUtil.resizeGeometry(this.coastline.coastline, 15 * this.domainController.zoom, false);
+        return PolygonUtil.resizeGeometry(this.coastline.coastline, 15 * this.zoom, false);
+    }
+
+    public async downloadSTL(): Promise<void> {
+        console.log('downloadSTL');
+
+        // All in screen space
+        const extendScreenX = this.screenDimensions.x * ((Util.DRAW_INFLATE_AMOUNT - 1) / 2);
+        const extendScreenY = this.screenDimensions.y * ((Util.DRAW_INFLATE_AMOUNT - 1) / 2);
+        const ground: Vector[] = [
+            new Vector(-extendScreenX, -extendScreenY),
+            new Vector(-extendScreenX, this.screenDimensions.y + extendScreenY),
+            new Vector(this.screenDimensions.x + extendScreenX, this.screenDimensions.y + extendScreenY),
+            new Vector(this.screenDimensions.x + extendScreenX, -extendScreenY),
+        ];
+
+        const blocks = await this.getBlocks();
+        console.log('blocks - ' + JSON.stringify(blocks));
+
+        const modelGenerator = new ModelGenerator(ground,
+            this.seaPolygon,
+            this.coastlinePolygon,
+            this.riverPolygon,
+            this.mainRoadPolygons,
+            this.majorRoadPolygons,
+            this.minorRoadPolygons,
+            this.buildingModels,
+            blocks,
+        );
+        const blob = await modelGenerator.getSTL();
+        console.log(blob);
+        this.downloadFile('model.zip', blob);
+    }
+
+    private downloadFile(filename: string, file: any): void {
+        saveAs(file, filename);
+    }
+
+    /**
+     * Edits vector
+     */
+    zoomToWorld(v: Vector): Vector {
+        return v.divideScalar(this.zoom);
+    }
+
+    /**
+     * Edits vector
+     */
+    zoomToScreen(v: Vector): Vector {
+        return v.multiplyScalar(this.zoom);
+    }
+
+    /**
+     * Edits vector
+     */
+    screenToWorld(v: Vector): Vector {
+        return this.zoomToWorld(v).add(this.origin);
+    }
+
+    /**
+     * Edits vector
+     */
+    worldToScreen(v: Vector): Vector {
+        return this.zoomToScreen(v.sub(this.origin));
     }
 }
